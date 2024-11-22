@@ -1,8 +1,130 @@
 #include <Bluepad32.h>
+#include <ESP32Servo.h>
+#include <CheapStepper.h>
+
 //https://bluepad32.readthedocs.io/en/latest/supported_gamepads/
+#define FRAME_LIMIT 60
+
+
+
+
+
+
+void dumpGamepad(ControllerPtr ctl) {
+  Serial.printf(
+    "idx=%d, dpad: 0x%02x, buttons: 0x%04x, axis L: %4d, %4d, axis R: %4d, %4d, brake: %4d, throttle: %4d, "
+    "misc: 0x%02x, gyro x:%6d y:%6d z:%6d, accel x:%6d y:%6d z:%6d\n",
+    ctl->index(),        // Controller Index
+    ctl->dpad(),         // D-pad
+    ctl->buttons(),      // bitmask of pressed buttons
+    ctl->axisX(),        // (-511 - 512) left X Axis
+    ctl->axisY(),        // (-511 - 512) left Y axis
+    ctl->axisRX(),       // (-511 - 512) right X axis
+    ctl->axisRY(),       // (-511 - 512) right Y axis
+    ctl->brake(),        // (0 - 1023): brake button
+    ctl->throttle(),     // (0 - 1023): throttle (AKA gas) button
+    ctl->miscButtons(),  // bitmask of pressed "misc" buttons
+    ctl->gyroX(),        // Gyro X
+    ctl->gyroY(),        // Gyro Y
+    ctl->gyroZ(),        // Gyro Z
+    ctl->accelX(),       // Accelerometer X
+    ctl->accelY(),       // Accelerometer Y
+    ctl->accelZ()        // Accelerometer Z
+  );
+}
+
+/*********** GLOBAL VARIABLES *****************/
+uint16_t buttons = 0;
+uint32_t bake = 0;
+int32_t axisLX = 0;
+int32_t axisLY = 0;
+int32_t axisRX = 0;
+int32_t axisRY = 0;
+
+/******USER DEFINE **********************************/
+
+#define S_BASE_I1 14
+#define S_BASE_I2 27
+#define S_BASE_I3 26
+#define S_BASE_I4 25
+
+#define S_X_I1 33
+#define S_X_I2 32
+#define S_X_I3 23
+#define S_X_I4 22
+
+#define S_Y_I1 19
+#define S_Y_I2 18
+#define S_Y_I3 5
+#define S_Y_I4 17
+
+#define S_HAND_PIN 12
+
+
+
+Servo servoHand;
+
+CheapStepper sBase(S_BASE_I1, S_BASE_I2, S_BASE_I3, S_BASE_I4);
+CheapStepper sX(S_X_I1, S_X_I2, S_X_I3, S_X_I4);
+CheapStepper sY(S_Y_I1, S_Y_I2, S_Y_I3, S_Y_I4);
+
+
+
+/******* USER TEMPLATE ***************/
+
+
+void userSetup() {
+  servoHand.attach(S_HAND_PIN);
+}
+
+
+void onButtonPress(uint16_t bt) {
+  Serial.printf("Press button %d\n", bt);
+}
+
+
+
+void onButtonRelease(uint16_t bt) {
+  Serial.printf("Release button %d\n", bt);
+}
+
+//bake: 0-1023
+void onBrakeChange(int32_t bake) {
+  Serial.printf("Bake change %d\n", bake);
+  servoHand.write(180 * bake / 1023);
+}
+
+//x, y : (-511 - 512)
+void onLeftAxisChange(int32_t x, int32_t y) {
+
+  Serial.printf("Left axis  change %d %d\n", x, y);
+}
+
+//x, y : (-511 - 512)
+void onRightAxisChange(int32_t x, int32_t y) {
+
+  Serial.printf("Right axis change %d %d\n", x, y);
+}
+
+
+
+void update(long deltaTime) {
+  if (axisRX != 0)
+    sBase.newMove(axisRX > 0, abs(axisRX / 20));
+
+      if (axisLX != 0)
+    sX.newMove(axisLX > 0, abs(axisLX / 20));
+
+    if (axisLY != 0)
+    sY.newMove(axisLY > 0, abs(axisLY / 20));
+}
+
+
+
+/*************************** SYSTEM *******************************************/
+
 ControllerPtr myControllers[BP32_MAX_GAMEPADS];
 
-#define FRAME_LIMIT 60
 
 // This callback gets called any time a new gamepad is connected.
 // Up to 4 gamepads can be connected at the same time.
@@ -42,73 +164,6 @@ void onDisconnectedController(ControllerPtr ctl) {
     Serial.println("CALLBACK: Controller disconnected, but not found in myControllers");
   }
 }
-
-void dumpGamepad(ControllerPtr ctl) {
-  Serial.printf(
-    "idx=%d, dpad: 0x%02x, buttons: 0x%04x, axis L: %4d, %4d, axis R: %4d, %4d, brake: %4d, throttle: %4d, "
-    "misc: 0x%02x, gyro x:%6d y:%6d z:%6d, accel x:%6d y:%6d z:%6d\n",
-    ctl->index(),        // Controller Index
-    ctl->dpad(),         // D-pad
-    ctl->buttons(),      // bitmask of pressed buttons
-    ctl->axisX(),        // (-511 - 512) left X Axis
-    ctl->axisY(),        // (-511 - 512) left Y axis
-    ctl->axisRX(),       // (-511 - 512) right X axis
-    ctl->axisRY(),       // (-511 - 512) right Y axis
-    ctl->brake(),        // (0 - 1023): brake button
-    ctl->throttle(),     // (0 - 1023): throttle (AKA gas) button
-    ctl->miscButtons(),  // bitmask of pressed "misc" buttons
-    ctl->gyroX(),        // Gyro X
-    ctl->gyroY(),        // Gyro Y
-    ctl->gyroZ(),        // Gyro Z
-    ctl->accelX(),       // Accelerometer X
-    ctl->accelY(),       // Accelerometer Y
-    ctl->accelZ()        // Accelerometer Z
-  );
-}
-
-/*********** GLOBAL VARIABLES *****************/
-uint16_t buttons = 0;
-uint16_t bake = 0;
-uint16_t axisLX = 0;
-uint16_t axisLY = 0;
-uint16_t axisRX = 0;
-uint16_t axisRY = 0;
-
-
-/******* USER TEMPLATE ***************/
-void onButtonPress(uint16_t bt) {
-  Serial.printf("Press button %d\n", bt);
-}
-
-
-
-void onButtonRelease(uint16_t bt) {
-  Serial.printf("Release button %d\n", bt);
-}
-
-//bake: 0-1023
-void onBrakeChange(int32_t bake) {
-  Serial.printf("Bake change %d\n", bake);
-}
-
-//x, y : (-511 - 512)
-void onLeftAxisChange(int32_t x, int32_t y) {
-  Serial.printf("Left axis  change %d %d\n", x, y);
-}
-
-//x, y : (-511 - 512)
-void onRightAxisChange(int32_t x, int32_t y) {
-  Serial.printf("Right axis change %d %d\n", x, y);
-}
-
-
-
-void update(long deltaTime) {
-}
-
-
-
-/*************************** SYSTEM *******************************************/
 
 //detect level 0 event
 void gamepadLoop() {
@@ -196,20 +251,22 @@ void setup() {
   // - Second one, which is a "virtual device", is a mouse.
   // By default, it is disabled.
   BP32.enableVirtualDevice(false);
+
+  userSetup();
 }
 
 
-long lastExecTime = 0;
+long nextFrameTime = 0;
 void loop() {
   long startTime = millis();
-  gamepadLoop();
-
-  long nextTime = startTime + 1000 / FRAME_LIMIT;
-
-  update(max(1000l / FRAME_LIMIT, lastExecTime));
-  long endTime = millis();
-  lastExecTime = endTime - startTime;
-  long paddingTime = nextTime - endTime;
-  if (paddingTime <= 0) paddingTime = 1;  //overflow or low frame
-  vTaskDelay(paddingTime);
+  if (startTime >= nextFrameTime) {
+    gamepadLoop();
+    nextFrameTime = startTime + 1000 / FRAME_LIMIT;
+    update(max(1000l / FRAME_LIMIT, nextFrameTime - startTime));
+  }
+  sBase.run();
+  sX.run();
+  sY.run();
+  vTaskDelay(1);
+  
 }
