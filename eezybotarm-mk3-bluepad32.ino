@@ -91,7 +91,7 @@ void onButtonRelease(uint16_t bt) {
 //bake: 0-1023
 void onBrakeChange(int32_t bake) {
   Serial.printf("Bake change %d\n", bake);
-  servoHand.write(180 * bake / 1023);
+  servoHand.write(70 * bake / 1023);
 }
 
 //x, y : (-511 - 512)
@@ -110,13 +110,13 @@ void onRightAxisChange(int32_t x, int32_t y) {
 
 void update(long deltaTime) {
   if (axisRX != 0)
-    sBase.newMove(axisRX > 0, abs(axisRX / 20));
+    sBase.newMove(axisRX < 0, abs(axisRX / 20));
 
-      if (axisLX != 0)
-    sX.newMove(axisLX > 0, abs(axisLX / 20));
+  if (axisLY != 0)
+    sX.newMove(axisLY > 0, abs(axisLY / 20));
 
-    if (axisLY != 0)
-    sY.newMove(axisLY > 0, abs(axisLY / 20));
+  if (axisRY != 0)
+    sY.newMove(axisRY > 0, abs(axisRY / 20));
 }
 
 
